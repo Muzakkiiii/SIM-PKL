@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Http; // Memanggil Http Client untuk AI
 use Illuminate\Http\Request;
 use App\Models\Placement; // Memantau tabel penempatan
+use App\Models\Student;   // Memanggil model Student untuk statistik
+use App\Models\Company;   // Memanggil model Company untuk statistik
 use Barryvdh\DomPDF\Facade\Pdf; // Memanggil alat cetak PDF
 
 class AdminController extends Controller
@@ -12,8 +14,24 @@ class AdminController extends Controller
     // 1. Halaman Dashboard Admin
     public function index()
     {
+        // Data tabel penempatan
         $placements = Placement::with(['student', 'company'])->latest()->get();
-        return view('admin.dashboard', compact('placements'));
+
+        // Data statistik untuk Statistic Cards
+        $totalStudents = Student::count();
+        $pendingPlacements = Placement::where('status', 'pending')->count();
+        $approvedPlacements = Placement::where('status', 'approved')->count();
+        $rejectedPlacements = Placement::where('status', 'rejected')->count();
+        $totalCompanies = Company::count();
+
+        return view('admin.dashboard', compact(
+            'placements',
+            'totalStudents',
+            'pendingPlacements',
+            'approvedPlacements',
+            'rejectedPlacements',
+            'totalCompanies'
+        ));
     }
 
     // 2. Proses Simpan Perubahan Verifikasi (ACC/Tolak)
@@ -56,10 +74,8 @@ class AdminController extends Controller
     // 4. Halaman Form Verifikasi (SUDAH TERINTEGRASI AI 🤖)
     public function edit($id)
     {
-        // Ambil data penempatan siswa
         $placement = Placement::with(['student', 'company'])->findOrFail($id);
 
-        // Hitung durasi PKL (Default 4 bulan jika belum diisi)
         $lama_pkl = 4;
         if ($placement->start_date && $placement->end_date) {
             $start = \Carbon\Carbon::parse($placement->start_date);
@@ -67,7 +83,6 @@ class AdminController extends Controller
             $lama_pkl = max(1, $start->diffInMonths($end));
         }
 
-        // Penyelarasan Nama Jurusan ke format Kamus AI
         $kelas_siswa = strtoupper($placement->student->class_name);
         if (str_contains($kelas_siswa, 'TKR')) {
             $jurusan_ai = 'TEKNIK KENDARAAN RINGAN';
@@ -78,11 +93,9 @@ class AdminController extends Controller
         } elseif (str_contains($kelas_siswa, 'MLOG') || str_contains($kelas_siswa, 'LOG')) {
             $jurusan_ai = 'MANAGEMEN LOGISTIC';
         } else {
-            // Jika tidak ada yang cocok, gunakan fallback default yang ada di dataset Anda
             $jurusan_ai = 'TEKNIK KENDARAAN RINGAN'; 
         }
 
-        // Minta Prediksi ke Server Python Flask
         try {
             $response = Http::timeout(5)->post('http://127.0.0.1:5000/predict', [
                 'lama_pkl' => $lama_pkl,
@@ -99,7 +112,6 @@ class AdminController extends Controller
             $ai_prediction = 'Server AI Tidak Aktif';
         }
 
-        // Kirim semua variabel ke view admin.edit
         return view('admin.edit', compact('placement', 'ai_prediction', 'lama_pkl'));
     }
 }
