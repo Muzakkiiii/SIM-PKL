@@ -10,11 +10,26 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="#">Administrator Hubin</a>
+            <a class="navbar-brand" href="{{ route('admin.dashboard') }}">Administrator Hubin</a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-white-50 small">{{ auth()->user()->name }}</span>
+                <form action="{{ route('logout') }}" method="POST" class="mb-0">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-light">Logout</button>
+                </form>
+            </div>
         </div>
     </nav>
 
     <div class="container">
+
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
+        @endif
+
         <div class="card shadow-sm">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0">Data Masuk Penempatan Siswa</h5>
@@ -61,14 +76,9 @@
                                 </td>
 
                                 <td>
-                                    <a href="{{ route('admin.edit', $item->id) }}" class="btn btn-sm btn-primary">
-                                        Verifikasi
-                                    </a>
-                                </td>
-                                <td>
                                     <div class="d-flex gap-2">
                                         <a href="{{ route('admin.edit', $item->id) }}" class="btn btn-sm btn-primary">
-                                            Edit
+                                            Verifikasi
                                         </a>
 
                                         @if($item->status == 'approved')

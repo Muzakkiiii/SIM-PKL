@@ -15,11 +15,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Akun default Administrator Hubungan Industri (Hubin)
+        // Silakan login menggunakan kredensial ini, lalu ganti passwordnya.
+        User::updateOrCreate(
+            ['email' => 'admin@simpkl.sch.id'],
+            [
+                'name' => 'Admin Hubin',
+                'password' => bcrypt('admin123'),
+            ]
+        );
     }
 }
