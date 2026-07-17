@@ -2,45 +2,32 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Http; // Memanggil Http Client untuk AI
 use Illuminate\Http\Request;
-use App\Models\Placement; // Kita akan memantau tabel penempatan
-use Barryvdh\DomPDF\Facade\Pdf; // PENTING: Memanggil alat PDF
+use App\Models\Placement; // Memantau tabel penempatan
+use Barryvdh\DomPDF\Facade\Pdf; // Memanggil alat cetak PDF
 
 class AdminController extends Controller
 {
+    // 1. Halaman Dashboard Admin
     public function index()
     {
-        // AMBIL DATA
-        // with(['student', 'company']) -> ini teknik Eager Loading tadi.
-        // latest() -> urutkan dari yang paling baru masuk.
         $placements = Placement::with(['student', 'company'])->latest()->get();
-
         return view('admin.dashboard', compact('placements'));
     }
-    // 1. Tampilkan Halaman Form Edit
-    public function edit($id)
-    {
-        // Cari data penempatan berdasarkan ID, kalau tidak ada, tampilkan error 404
-        $placement = Placement::with(['student', 'company'])->findOrFail($id);
 
-        return view('admin.edit', compact('placement'));
-    }
-
-    // 2. Proses Simpan Perubahan
+    // 2. Proses Simpan Perubahan Verifikasi (ACC/Tolak)
     public function update(Request $request, $id)
     {
         $placement = Placement::findOrFail($id);
 
-        // Validasi Input Admin
         $request->validate([
             'status' => 'required|in:pending,approved,rejected',
             'start_date' => 'nullable|date',
-            // Tanggal selesai harus setelah tanggal mulai (after_or_equal)
             'end_date' => 'nullable|date|after_or_equal:start_date', 
             'letter_number' => 'nullable|string',
         ]);
 
-        // Update data di database
         $placement->update([
             'status' => $request->status,
             'start_date' => $request->start_date,
@@ -50,25 +37,69 @@ class AdminController extends Controller
 
         return redirect()->route('admin.dashboard')->with('success', 'Data berhasil diverifikasi!');
     }
+
+    // 3. Cetak Surat Pengantar PDF
     public function printLetter($id)
     {
-        // 1. Ambil Data
         $placement = Placement::with(['student', 'company'])->findOrFail($id);
 
-        // 2. Cek Keamanan: Kalau belum disetujui, jangan boleh cetak surat
         if ($placement->status != 'approved') {
             return back()->with('error', 'Data belum disetujui, surat tidak bisa dicetak.');
         }
 
-        // 3. Siapkan Kertas PDF
-        // Kita akan membuat view baru bernama 'admin.letter'
         $pdf = Pdf::loadView('admin.letter', compact('placement'));
-
-        // 4. Atur ukuran kertas ke A4 (opsional, defaultnya A4)
         $pdf->setPaper('a4', 'portrait');
 
-        // 5. Tampilkan PDF di browser (Stream)
-        // Kalau mau langsung download, ganti stream() jadi download()
         return $pdf->stream('Surat_Pengantar_' . $placement->student->nis . '.pdf');
+    }
+
+    // 4. Halaman Form Verifikasi (SUDAH TERINTEGRASI AI 🤖)
+    public function edit($id)
+    {
+        // Ambil data penempatan siswa
+        $placement = Placement::with(['student', 'company'])->findOrFail($id);
+
+        // Hitung durasi PKL (Default 4 bulan jika belum diisi)
+        $lama_pkl = 4;
+        if ($placement->start_date && $placement->end_date) {
+            $start = \Carbon\Carbon::parse($placement->start_date);
+            $end = \Carbon\Carbon::parse($placement->end_date);
+            $lama_pkl = max(1, $start->diffInMonths($end));
+        }
+
+        // Penyelarasan Nama Jurusan ke format Kamus AI
+        $kelas_siswa = strtoupper($placement->student->class_name);
+        if (str_contains($kelas_siswa, 'TKR')) {
+            $jurusan_ai = 'TEKNIK KENDARAAN RINGAN';
+        } elseif (str_contains($kelas_siswa, 'AKL') || str_contains($kelas_siswa, 'AKUN')) {
+            $jurusan_ai = 'AKUNTANSI KEUANGAN LEMBAGA';
+        } elseif (str_contains($kelas_siswa, 'TEI') || str_contains($kelas_siswa, 'ELIND')) {
+            $jurusan_ai = 'TEKNIK ELEKTRONIKA INDUSTRI';
+        } elseif (str_contains($kelas_siswa, 'MLOG') || str_contains($kelas_siswa, 'LOG')) {
+            $jurusan_ai = 'MANAGEMEN LOGISTIC';
+        } else {
+            // Jika tidak ada yang cocok, gunakan fallback default yang ada di dataset Anda
+            $jurusan_ai = 'TEKNIK KENDARAAN RINGAN'; 
+        }
+
+        // Minta Prediksi ke Server Python Flask
+        try {
+            $response = Http::timeout(5)->post('http://127.0.0.1:5000/predict', [
+                'lama_pkl' => $lama_pkl,
+                'nama_perusahaan' => $placement->company->name,
+                'jurusan' => $jurusan_ai
+            ]);
+
+            if ($response->successful()) {
+                $ai_prediction = $response->json()['prediksi'];
+            } else {
+                $ai_prediction = 'Gagal Mengambil Prediksi (Data Tidak Dikenali AI)';
+            }
+        } catch (\Exception $e) {
+            $ai_prediction = 'Server AI Tidak Aktif';
+        }
+
+        // Kirim semua variabel ke view admin.edit
+        return view('admin.edit', compact('placement', 'ai_prediction', 'lama_pkl'));
     }
 }

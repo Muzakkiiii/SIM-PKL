@@ -19,13 +19,43 @@
 
                     <form action="{{ route('admin.update', $placement->id) }}" method="POST">
                         @csrf
-                        @method('PUT') <div class="alert alert-info">
+                        @method('PUT') 
+                        
+                        <!-- Data Siswa (Bawaan Anda) -->
+                        <div class="alert alert-info mb-3">
                             <strong>Data Siswa:</strong><br>
                             Nama: {{ $placement->student->name }} <br>
                             Kelas: {{ $placement->student->class_name }} <br>
                             Perusahaan Tujuan: <strong>{{ $placement->company->name }}</strong>
                         </div>
 
+                        <!--  KOTAK REKOMENDASI AI (SISIPKAN DI SINI) -->
+                        <div class="card bg-light mb-4 border-warning shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title text-warning d-flex align-items-center">
+                                    <strong> Rekomendasi Kecerdasan Buatan (AI)</strong>
+                                </h6>
+                                <p class="card-text mb-2 text-secondary" style="font-size: 0.95rem;">
+                                    Berdasarkan analisis data historis angkatan lalu, penempatan siswa dari jurusan 
+                                    <strong>{{ $placement->student->class_name }}</strong> di <strong>{{ $placement->company->name }}</strong> 
+                                    diprediksi akan menghasilkan predikat akhir:
+                                </p>
+                                
+                                <!-- Pembedaan Warna Badge Hasil Prediksi -->
+                                @if($ai_prediction == 'SANGAT KOMPETEN')
+                                    <span class="badge bg-success px-3 py-2 fs-6">SANGAT KOMPETEN</span>
+                                    <div class="form-text text-success mt-1">✓ Penempatan ini sangat direkomendasikan karena rekam jejak historis yang sangat baik.</div>
+                                @elseif($ai_prediction == 'KOMPETEN')
+                                    <span class="badge bg-primary px-3 py-2 fs-6">KOMPETEN</span>
+                                    <div class="form-text text-muted mt-1">• Penempatan ini dinilai aman dan memenuhi standar minimal kompetensi sekolah.</div>
+                                @else
+                                    <span class="badge bg-danger px-3 py-2 fs-6">{{ $ai_prediction }}</span>
+                                    <div class="form-text text-danger mt-1">⚠ Perhatian: Hubungkan server Python Anda agar fitur ini berfungsi maksimal.</div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Input Status Pengajuan (Bawaan Anda) -->
                         <div class="mb-3">
                             <label class="form-label">Status Pengajuan</label>
                             <select name="status" class="form-select">

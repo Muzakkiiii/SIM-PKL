@@ -51,9 +51,18 @@
                                     <label>Kelas</label>
                                     <select name="class_name" class="form-select" required>
                                         <option value="">Pilih Kelas...</option>
-                                        <option value="XI RPL 1">XI RPL 1</option>
-                                        <option value="XI RPL 2">XI RPL 2</option>
-                                        <option value="XI TKJ 1">XI TKJ 1</option>
+                                        <option value="XII TKR A">XII TKR A</option>
+                                        <option value="XII TKR B">XII TKR B</option>
+                                        <option value="XII TKR C">XII TKR C</option>
+                                        <option value="XII TKR D">XII TKR D</option>
+                                        <option value="XII AKL A">XII AKL A</option>
+                                        <option value="XII AKL B">XII AKL B</option>
+                                        <option value="XII AKL C">XII AKL C</option>
+                                        <option value="XII AKL D">XII AKL D</option>
+                                        <option value="XII ELIN A">XII STI</option>
+                                        <option value="XII ELIN B">XII ELIN B</option>
+                                        <option value="XII MLOG A">XII MLOG A</option>
+                                        <option value="XII MLOG b">XII MLOG B</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
